@@ -11,19 +11,21 @@ cursor = conn.cursor()
 
 st.title("🕵️‍♂️ Maigret Archive")
 
-# Stats
+# --- New Metric Header ---
 total_books = 75
 read_count = cursor.execute("SELECT COUNT(*) FROM books WHERE read_status = 1").fetchone()[0]
-progress = read_count / total_books
 
-st.progress(progress)
-st.write(f"📊 **Progress:** {read_count}/{total_books} ({int(progress*100)}%)")
+col1, col2 = st.columns(2)
+col1.metric("📚 Total Maigret Books", total_books)
+col2.metric("📖 Total Read", read_count)
 
-# Filters
+st.divider()
+
+# --- Filters ---
 search_query = st.text_input("🔍 Search...", "").lower()
-show_unread_only = st.toggle("📚 Shop Mode (Hide Read)")
+show_unread_only = st.toggle("🛒 Shop Mode (Hide Read)")
 
-# Data Fetching (Including the new 'notes' column)
+# --- Data Fetching ---
 if search_query:
     cursor.execute("""
         SELECT rowid, title, alt_titles, original_title, pub_year, read_status, notes 
@@ -35,19 +37,18 @@ else:
 
 books = cursor.fetchall()
 
+# --- List Display ---
 for book in books:
     db_id, title, alts, original, year, read, notes = book
     
     if show_unread_only and read:
         continue
         
-    with st.expander(f"{'✅' if read else '📖'} {title} ({year})", expanded=not read):
+    with st.expander(f"{'✅' if read else '📚'} {title} ({year})", expanded=not read):
         st.write(f"**Original:** {original}")
         
         # Notes Section
-        new_note = st.text_input("Notes (max 100 chars)", value=notes if notes else "", max_chars=100, key=f"note_{db_id}")
-        
-        # Save note if it changed
+        new_note = st.text_input("Notes", value=notes if notes else "", max_chars=100, key=f"note_{db_id}")
         if new_note != notes:
             cursor.execute("UPDATE books SET notes = ? WHERE rowid = ?", (new_note, db_id))
             conn.commit()
